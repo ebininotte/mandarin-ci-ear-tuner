@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Mandarin CI Ear Tuner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #0b1120;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .modal-overlay {
+      position: fixed !important;
+      inset: 0 !important;
+      background-color: rgba(3, 7, 18, 0.88) !important;
+      backdrop-filter: blur(8px) !important;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999 !important;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .modal-overlay.active {
+      display: flex !important;
+    }
+
+    .ds-step-pill {
+      border-radius: 9999px;
+      transition: all 0.3s ease;
+    }
+    .ds-step-pill.active {
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.95);
+      border: 2px solid #ffffff;
+      transform: scaleY(1.06);
+    }
+
+    .sentence-item {
+      transition: all 0.2s ease;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 0.5rem;
+      padding: 0.35rem 0.5rem;
+    }
+    .sentence-item:hover {
+      background-color: rgba(51, 65, 85, 0.45);
+    }
+    .sentence-item.active-karaoke {
+      background-color: rgba(234, 179, 8, 0.22) !important;
+      color: #fef08a !important;
+      font-weight: 600;
+      border-left: 4px solid #eab308;
+      padding-left: 0.75rem !important;
+    }
+
+    .blind-curtain {
+      position: absolute;
+      inset: 0;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      z-index: 10;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-2 sm:p-4 md:p-6 pb-24">
+
+  <header class="max-w-4xl mx-auto mb-4 bg-slate-900/95 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🎧</span>
+          <h1 class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">
+            Mandarin CI Ear Tuner
+          </h1>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">Krashen CI (i+1) • Zero English • 100% Neural Gemini TTS</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div class="bg-slate-800/90 border border-slate-700/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-xs">
+          <span class="text-slate-400">Profile:</span>
+          <span id="sync-profile-key" class="font-mono text-cyan-300 font-semibold">ear-08052556</span>
+          <span id="sync-status-display" class="text-emerald-400 font-medium ml-1">● Local</span>
+        </div>
+
+        <button onclick="openApiKeyModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 transition shadow">
+          <span>🔑</span> <span>API Key</span>
+        </button>
+        <button id="btn-force-cloud-sync" onclick="manualForceCloudSync()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 transition shadow">
+          <span>☁️</span> <span>Save State</span>
+        </button>
+        <button onclick="openLinkDeviceModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg transition border border-slate-700">
+          🔗 Link Key
+        </button>
+        <button onclick="openDriveBackupModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs px-2.5 py-1 rounded-lg transition border border-slate-700 flex items-center gap-1">
+          💾 Drive Backup
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-800 text-center">
+      <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800/60">
+        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Listening</div>
+        <div id="stat-total-time" class="text-sm sm:text-base font-bold text-amber-300">3h 07m</div>
+      </div>
+      <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800/60">
+        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Roadmap</div>
+        <div id="stat-current-level" class="text-sm sm:text-base font-bold text-cyan-300">Stage 1</div>
+      </div>
+      <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800/60">
+        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Stories</div>
+        <div id="stat-stories-count" class="text-sm sm:text-base font-bold text-emerald-300">106</div>
+      </div>
+      <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800/60">
+        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Streak</div>
+        <div id="stat-streak-days" class="text-sm sm:text-base font-bold text-purple-300">2 Days 🔥</div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="max-w-4xl mx-auto mb-4 flex border border-slate-800 rounded-xl bg-slate-900/80 p-1 gap-1 text-xs sm:text-sm font-medium">
+    <button id="nav-tab-player" onclick="switchMainTab('player')" class="flex-1 py-2 px-1 sm:px-2 text-center rounded-lg bg-cyan-600 text-white font-semibold transition flex items-center justify-center gap-1 shadow">
+      <span>🎧</span> <span>Player</span>
+    </button>
+    <button id="nav-tab-roadmap" onclick="switchMainTab('roadmap')" class="flex-1 py-2 px-1 sm:px-2 text-center rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+      <span>🗺️</span> <span>Roadmap</span>
+    </button>
+    <button id="nav-tab-calendar" onclick="switchMainTab('calendar')" class="flex-1 py-2 px-1 sm:px-2 text-center rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+      <span>📚</span> <span>Logs & Library</span>
+    </button>
+    <button id="nav-tab-coach" onclick="switchMainTab('coach')" class="flex-1 py-2 px-1 sm:px-2 text-center rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+      <span>🤖</span> <span>AI Coach</span>
+    </button>
+  </nav>
+
+  <main id="view-player" class="max-w-4xl mx-auto space-y-4">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-lg space-y-3">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div class="flex-1">
+          <label class="block text-[11px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">Active Mandarin Story</label>
+          <select id="story-dropdown" onchange="onStorySelected(this.value)" class="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 outline-none focus:border-cyan-400 font-medium">
+          </select>
+        </div>
+
+        <div class="w-full sm:w-64">
+          <label class="block text-[11px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">Neural Voice (Gemini TTS)</label>
+          <select id="voice-dropdown" onchange="onVoiceSelected(this.value)" class="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 outline-none focus:border-cyan-400">
+            <option value="Aoede" selected>✨ Aoede (Storyteller, Natural)</option>
+            <option value="Kore">✨ Kore (Clear & Balanced)</option>
+            <option value="Leda">✨ Leda (Youthful & Crisp)</option>
+            <option value="Zephyr">✨ Zephyr (Bright & Lively)</option>
+            <option value="Sulafat">✨ Sulafat (Warm & Calm)</option>
+            <option value="Puck">✨ Puck (Upbeat)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <button id="btn-generate-ai-story" onclick="generateAutonomousStory()" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs sm:text-sm px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition">
+          <span>✨</span> <span>New AI Story</span>
+        </button>
+        <button onclick="runAcousticSlaAudit()" class="bg-purple-700 hover:bg-purple-600 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition">
+          <span>🔍</span> <span>Acoustic SLA Audit</span>
+        </button>
+        <div class="flex-1"></div>
+        <button id="btn-auto-3pass-toggle" onclick="toggleAuto3Pass()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-3 py-2 rounded-xl border border-slate-700 font-semibold flex items-center gap-1.5">
+          <span>🔄</span> <span>Auto 3-Pass: ON</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-2">
+      <button id="tab-pass-1" onclick="selectPass(1)" class="bg-cyan-600 text-white font-semibold py-2 px-1 sm:px-3 rounded-xl border border-cyan-500 text-center transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-xs sm:text-sm font-bold truncate">Pass 1</span>
+        <span class="text-[10px] text-cyan-200 opacity-90 truncate">Blind Ear</span>
+      </button>
+      <button id="tab-pass-2" onclick="selectPass(2)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-1 sm:px-3 rounded-xl border border-slate-700 text-center transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-xs sm:text-sm font-bold truncate">Pass 2</span>
+        <span class="text-[10px] text-slate-400 truncate">Audio + Text</span>
+      </button>
+      <button id="tab-pass-3" onclick="selectPass(3)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-1 sm:px-3 rounded-xl border border-slate-700 text-center transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-xs sm:text-sm font-bold truncate">Pass 3</span>
+        <span class="text-[10px] text-slate-400 truncate">Ear Anchor</span>
+      </button>
+    </div>
+
+    <div class="relative bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl min-h-[260px]">
+      <div id="blind-curtain-overlay" class="blind-curtain">
+        <div class="w-12 h-12 bg-cyan-950/80 border border-cyan-500/50 rounded-full flex items-center justify-center text-cyan-400 text-xl mb-2 shadow-lg shadow-cyan-950">
+          🎧
+        </div>
+        <h3 id="blind-title" class="text-base sm:text-lg font-bold text-white mb-1">Pure Auditory Tuning (Pass 1)</h3>
+        <p id="blind-desc" class="text-xs sm:text-sm text-slate-400 max-w-md">
+          Characters masked. Focus 100% on the acoustic rhythm and meaning before visual reading.
+        </p>
+        <button onclick="selectPass(2)" class="mt-3 text-xs text-cyan-300 hover:underline">
+          Peek Text (Switch to Pass 2) →
+        </button>
+      </div>
+
+      <div id="karaoke-container" class="space-y-3 text-base sm:text-lg leading-relaxed select-text">
+      </div>
+    </div>
+
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-lg space-y-3">
+      <div class="flex items-center gap-3">
+        <button id="btn-main-play" onclick="togglePlay()" class="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold flex items-center justify-center text-xl shadow-lg transition transform active:scale-95 shrink-0">
+          ▶
+        </button>
+
+        <div class="flex-1 space-y-1 min-w-0">
+          <div class="flex justify-between text-xs text-slate-400 font-mono">
+            <span id="player-time-current">00:00</span>
+            <span id="player-time-duration">00:00</span>
+          </div>
+          <input id="player-scrubber" type="range" min="0" max="100" value="0" oninput="onScrubInput(this.value)" class="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+        </div>
+
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="setPlaySpeed(0.85)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">0.85x</button>
+          <button onclick="setPlaySpeed(1.0)" class="px-2 py-1 rounded bg-cyan-700 text-white text-xs font-semibold">1.0x</button>
+          <button onclick="setPlaySpeed(1.15)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">1.15x</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="comp-card" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🎯</span>
+          <h2 class="text-base sm:text-lg font-bold text-white">Acoustic Boundary Verification (i + 1)</h2>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Pure audio blind checks. Did your auditory ear decode the structure directly from the sound alone?
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="bg-cyan-950 text-cyan-300 border border-cyan-800 text-[11px] font-bold px-2 py-0.5 rounded">
+                Baseline Sound (i)
+              </span>
+              <button id="btn-probe-play-anchor" onclick="playProbe('anchor')" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 transition shadow">
+                ▶ Play Sound
+              </button>
+            </div>
+            <p id="probe-anchor-pattern" class="text-xs text-slate-400 italic">Noun + 是 + Color + 的 (Baseline anchor)</p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5 text-[11px]">
+            <button onclick="recordProbe('anchor', 'direct', this)" class="probe-btn-anchor py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-center font-medium">
+              Direct Sound
+            </button>
+            <button onclick="recordProbe('anchor', 'fuzzy', this)" class="probe-btn-anchor py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-center font-medium">
+              Fuzzy / Lag
+            </button>
+            <button onclick="recordProbe('anchor', 'unparsed', this)" class="probe-btn-anchor py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-center font-medium">
+              Unparsed
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="bg-purple-950 text-purple-300 border border-purple-800 text-[11px] font-bold px-2 py-0.5 rounded">
+                Frontier Challenge (i+1)
+              </span>
+              <button id="btn-probe-play-frontier" onclick="playProbe('frontier')" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 transition shadow">
+                ▶ Play Sound
+              </button>
+            </div>
+            <p id="probe-frontier-pattern" class="text-xs text-slate-400 italic">Directional complement / motion frontier</p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5 text-[11px]">
+            <button onclick="recordProbe('frontier', 'direct', this)" class="probe-btn-frontier py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-center font-medium">
+              Direct Sound
+            </button>
+            <button onclick="recordProbe('frontier', 'fuzzy', this)" class="probe-btn-frontier py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-center font-medium">
+              Fuzzy / Lag
+            </button>
+            <button onclick="recordProbe('frontier', 'unparsed', this)" class="probe-btn-frontier py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-center font-medium">
+              Unparsed
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
+        <button onclick="calibrateAndGenerateNextStory()" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transition">
+          <span>✨</span> <span>Calibrate & Generate Next Story</span>
+        </button>
+        <button onclick="copyProbeTelemetry()" class="text-xs text-slate-400 hover:text-slate-200 border border-slate-800 bg-slate-950 px-3 py-2 rounded-xl transition">
+          📋 Copy Telemetry
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <section id="view-roadmap" class="max-w-4xl mx-auto space-y-4 hidden">
+    <div class="bg-white text-slate-900 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
+      <div>
+        <div class="flex justify-between items-center text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
+          <span>Watched: <strong id="ds-watched-min" class="text-slate-950">51 min</strong></span>
+          <span class="flex items-center gap-1 cursor-pointer" onclick="promptDailyGoal()">
+            Daily goal: <strong id="ds-daily-goal" class="text-slate-950">30 min</strong> ✏️
+          </span>
+        </div>
+        <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+          <div id="ds-goal-bar-fill" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <div class="text-lg font-extrabold text-slate-900 mb-4">Overall progression</div>
+        <div class="flex items-end justify-between gap-1.5 sm:gap-3 h-40 pb-2 px-1">
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <div id="ds-pill-1" class="ds-step-pill w-full bg-rose-500 active h-10"></div>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-600">L1</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <div id="ds-pill-2" class="ds-step-pill w-full bg-pink-400 opacity-30 h-14"></div>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-600">L2</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <div id="ds-pill-3" class="ds-step-pill w-full bg-purple-400 opacity-30 h-20"></div>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-600">L3</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <div id="ds-pill-4" class="ds-step-pill w-full bg-indigo-500 opacity-30 h-24"></div>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-600">L4</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <div id="ds-pill-5" class="ds-step-pill w-full bg-sky-400 opacity-30 h-28"></div>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-600">L5</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <div id="ds-pill-6" class="ds-step-pill w-full bg-teal-400 opacity-30 h-32"></div>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-600">L6</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <div id="ds-pill-7" class="ds-step-pill w-full bg-amber-400 opacity-30 h-36"></div>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-600">L7</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-sm sm:text-base font-semibold">
+        <span class="text-slate-600">You are currently in</span>
+        <span id="ds-current-level-title" class="text-slate-950 font-bold text-lg">Level 1</span>
+      </div>
+
+      <div class="border-t border-slate-100 pt-3 space-y-2">
+        <div class="flex justify-between items-center text-sm font-semibold">
+          <span class="text-slate-600">Total input time</span>
+          <span id="ds-total-input-hours" class="text-slate-950 font-bold text-lg">3.12 hrs</span>
+        </div>
+        <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+          <div id="ds-level-progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 12.5%;"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-600 font-medium">
+          <span id="ds-level-start-target">0 hrs</span>
+          <span id="ds-level-end-target">25 hrs</span>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-sm font-semibold">
+        <span class="text-slate-600">Hours to <span id="ds-next-level-label">Level 2</span></span>
+        <span id="ds-hours-remaining" class="text-slate-950 font-bold text-lg">21.88 hrs</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-calendar" class="max-w-4xl mx-auto space-y-4 hidden">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span>📊</span> <span>Input Velocity & Daily Density</span>
+          </h2>
+          <p class="text-xs text-slate-400">14-Day immersion distribution across calendar dates</p>
+        </div>
+        <button onclick="openManualRestoreModal()" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs px-3 py-1.5 rounded-lg border border-slate-700 font-medium transition">
+          ✏ Manually Adjust Stats
+        </button>
+      </div>
+
+      <div>
+        <div class="text-xs font-semibold text-slate-400 mb-2">14-Day Activity Heatmap</div>
+        <div id="calendar-heatmap-grid" class="grid grid-cols-7 sm:grid-cols-14 gap-1.5">
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-800">
+        <div class="text-xs font-semibold text-slate-400 mb-2">Calendar Daily Breakdown</div>
+        <div id="daily-log-table" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <span>📚</span> <span>Generated Story Library (<span id="library-story-count">106</span>)</span>
+        </h2>
+        <input id="library-search-input" type="text" oninput="filterStoryLibrary(this.value)" placeholder="Search stories..." class="bg-slate-950 border border-slate-700 text-xs px-3 py-1.5 rounded-lg text-slate-200 outline-none w-full sm:w-48">
+      </div>
+      <div id="library-stories-list" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+      </div>
+    </div>
+  </section>
+
+  <section id="view-coach" class="max-w-4xl mx-auto space-y-4 hidden">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col h-[520px]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🤖</span>
+          <div>
+            <h2 class="text-base font-bold text-white">Gemini SLA Ear Coach</h2>
+            <p class="text-xs text-slate-400">Live SLA feedback calibrated to your 3h 07m listening log</p>
+          </div>
+        </div>
+        <button onclick="resetCoachChat()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+          🔄 New Chat
+        </button>
+      </div>
+
+      <div id="coach-messages-box" class="flex-1 overflow-y-auto py-3 space-y-3 pr-1 text-xs sm:text-sm">
+      </div>
+
+      <div class="flex gap-1.5 overflow-x-auto py-2 border-t border-slate-800/80 no-scrollbar text-xs">
+        <button onclick="askCoachPrompt('What are the main cognitive aims of Stage 1 and how do I prevent mental translation?')" class="whitespace-nowrap bg-slate-800/90 hover:bg-slate-700 text-cyan-300 px-2.5 py-1 rounded-full border border-slate-700">
+          🎯 Stage 1 Aims
+        </button>
+        <button onclick="askCoachPrompt('Am I ready for native cartoons like Peppa Pig or should I stay on ear calibration?')" class="whitespace-nowrap bg-slate-800/90 hover:bg-slate-700 text-purple-300 px-2.5 py-1 rounded-full border border-slate-700">
+          🐷 Peppa Pig Readiness
+        </button>
+        <button onclick="askCoachPrompt('How do acoustic probes verify that I am decoding meaning directly from sound?')" class="whitespace-nowrap bg-slate-800/90 hover:bg-slate-700 text-emerald-300 px-2.5 py-1 rounded-full border border-slate-700">
+          🧠 Acoustic Probes SLA
+        </button>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        <input id="coach-user-input" type="text" onkeydown="if(event.key==='Enter') sendCoachMessage()" placeholder="Ask your SLA coach about roadmap pacing, auditory fatigue, or Krashen CI..." class="flex-1 bg-slate-950 border border-slate-700 text-slate-100 text-xs sm:text-sm px-3 py-2 rounded-xl outline-none focus:border-cyan-400">
+        <button id="btn-send-coach" onclick="sendCoachMessage()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition">
+          Send
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- API Key Modal -->
+  <div id="apikey-modal" class="modal-overlay">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+      <h3 class="text-base font-bold text-white flex items-center gap-1.5">
+        <span>🔑</span> <span>Gemini API Key</span>
+      </h3>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Used for Gemini Neural TTS voice synthesis and autonomous CI story generation. The key remains stored safely in your browser's local memory only.
+      </p>
+      <input id="input-api-key" type="password" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 text-slate-100 font-mono text-xs px-3 py-2 rounded-lg outline-none focus:border-cyan-400">
+      <div class="flex justify-between items-center pt-2">
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[11px] text-cyan-400 hover:underline">Get an API Key ↗</a>
+        <div class="flex gap-2">
+          <button onclick="closeApiKeyModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white">Cancel</button>
+          <button onclick="saveApiKey()" class="px-4 py-1.5 rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Save Key</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="link-device-modal" class="modal-overlay">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+      <h3 class="text-base font-bold text-white flex items-center gap-1.5">
+        <span>🔗</span> <span>Link Another Device Key</span>
+      </h3>
+      <p class="text-xs text-slate-400">
+        Enter the profile key from your other device to synchronize listening time, streaks, and stories:
+      </p>
+      <input id="input-link-sync-key" type="text" placeholder="e.g. ear-08052556" class="w-full bg-slate-950 border border-slate-700 text-slate-100 font-mono text-sm px-3 py-2 rounded-lg outline-none focus:border-cyan-400">
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeLinkDeviceModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white">Cancel</button>
+        <button onclick="applyLinkedSyncKey()" class="px-4 py-1.5 rounded-lg text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Connect & Load</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="drive-backup-modal" class="modal-overlay">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl">
+      <h3 class="text-base font-bold text-white flex items-center gap-1.5">
+        <span>💾</span> <span>Snapshot Backup & Restore</span>
+      </h3>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Save an independent JSON snapshot of your 11,225 seconds, streak, daily logs, and custom stories to transfer across devices.
+      </p>
+      <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+        <div class="text-xs font-semibold text-slate-300">1. Export to File</div>
+        <button onclick="exportProfileToDriveFile()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 transition">
+          <span>📥</span> <span>Download Backup JSON</span>
+        </button>
+      </div>
+      <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+        <div class="text-xs font-semibold text-slate-300">2. Restore from Backup File</div>
+        <input id="input-drive-file" type="file" accept=".json" onchange="importProfileFromDriveFile(event)" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-slate-800 file:text-cyan-300 hover:file:bg-slate-700 cursor-pointer">
+      </div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeDriveBackupModal()" class="px-4 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="manual-restore-modal" class="modal-overlay">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-2xl">
+      <h3 class="text-base font-bold text-white">✏️ Manually Adjust Stats</h3>
+      <p class="text-xs text-slate-400">Directly update numbers to recalibrate your Dreaming Spanish roadmap:</p>
+      <div>
+        <label class="block text-[11px] text-slate-400 mb-1">Total Listening Time (Minutes):</label>
+        <input id="manual-input-minutes" type="number" value="187" class="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm px-3 py-1.5 rounded-lg outline-none">
+      </div>
+      <div>
+        <label class="block text-[11px] text-slate-400 mb-1">Completed Stories Count:</label>
+        <input id="manual-input-stories" type="number" value="106" class="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm px-3 py-1.5 rounded-lg outline-none">
+      </div>
+      <div>
+        <label class="block text-[11px] text-slate-400 mb-1">Current Streak (Days):</label>
+        <input id="manual-input-streak" type="number" value="2" class="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm px-3 py-1.5 rounded-lg outline-none">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeManualRestoreModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white">Cancel</button>
+        <button onclick="applyManualRestoreStats()" class="px-4 py-1.5 rounded-lg text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Save & Recalibrate</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sla-audit-modal" class="modal-overlay">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-lg w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-1.5">
+          <span>🔍</span> <span>Acoustic SLA Linguistic Audit</span>
+        </h3>
+        <button onclick="closeSlaAuditModal()" class="text-slate-400 hover:text-white text-lg">×</button>
+      </div>
+      <div id="sla-audit-content" class="text-xs sm:text-sm text-slate-300 space-y-3 max-h-80 overflow-y-auto pr-1 leading-relaxed">
+        <div class="text-center py-6 text-slate-400">
+          <div class="text-2xl mb-2">⏳</div>
+          <p>Gemini is evaluating tonal sandhi, phoneme contrasts, and i+1 auditory load...</p>
+        </div>
+      </div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeSlaAuditModal()" class="px-4 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-cyan-500/80 text-cyan-200 text-xs sm:text-sm px-4 py-2 rounded-xl shadow-2xl opacity-0 pointer-events-none transition-all duration-300">
+    Notification
+  </div>
+
+  <script type="module">
+    const STORAGE_KEY = "mandarin_ci_state_v1";
+    let activeSyncKey = localStorage.getItem("mandarin_sync_key") || "ear-08052556";
+    let userApiKey = localStorage.getItem("gemini_user_api_key") || "";
+
+    let totalListeningSeconds = 11225;
+    let completedStoriesCount = 106;
+    let currentStreakDays = 2;
+    let currentStoryIndex = 0;
+    let currentPass = 1;
+    let auto3PassEnabled = true;
+    let selectedVoice = "Aoede";
+    let dailyGoalMinutes = 30;
+
+    let dailyLogs = {
+      "2026-09-30": { stories: 34, seconds: 3591 },
+      "2026-10-01": { stories: 25, seconds: 2755 },
+      "2026-10-02": { stories: 32, seconds: 3080 }
+    };
+
+    const STARTER_STORIES = [
+      {
+        title: "猫和苹果",
+        createdAt: "2026-09-30",
+        sentences: [
+          "这是猫。", "猫看见一个苹果。", "苹果很大。", "苹果是红色的。",
+          "猫看苹果。", "猫走过去。", "猫摸一摸苹果。", "苹果滚了！",
+          "苹果往前滚，滚，滚。", "猫追苹果。", "猫跑，跑，跑。", "苹果停了。",
+          "猫也停了。", "猫坐下。", "猫看着苹果。", "猫笑了。"
+        ],
+        probes: {
+          anchor: { text: "苹果是红色的。", pattern: "Noun + 是 + Color + 的 (Baseline anchor)" },
+          frontier: { text: "苹果往前滚。", pattern: "Directional complement / motion frontier" }
+        }
+      },
+      {
+        title: "大大和小小",
+        createdAt: "2026-09-30",
+        sentences: [
+          "有一只大狗。", "大狗叫大大。", "有一只小狗。", "小狗叫小小。",
+          "大大走得慢。", "小小跑得快。", "大大看见一个大球。", "小小看见一个小球。",
+          "大大咬大球。", "小小追小球。", "大球是红色的。", "小球是黄色的。",
+          "他们玩得很高兴。", "天黑了。", "大大和小小回家睡觉了。"
+        ],
+        probes: {
+          anchor: { text: "大球是红色的。", pattern: "Noun + 是 + Adjective + 的" },
+          frontier: { text: "大大走得慢，小小跑得快。", pattern: "Degree complement (V + 得 + Adj)" }
+        }
+      },
+      {
+        title: "喝水",
+        createdAt: "2026-09-30",
+        sentences: [
+          "今天天气很热。", "小明口渴了。", "他走进厨房。", "桌子上有一个水壶。",
+          "小明拿出一个玻璃杯。", "他把水倒进杯子里。", "水很清凉。", "小明喝了一大口。",
+          "啊，真舒服！", "他又喝了一口。", "现在他不渴了。"
+        ],
+        probes: {
+          anchor: { text: "小明喝了一口水。", pattern: "Verb + Measure word (口) + Object" },
+          frontier: { text: "他把水倒进杯子里。", pattern: "Ba-construction with directional result" }
+        }
+      }
+    ];
+
+    let customStories = [
+      {
+        title: "吃甜甜的苹果",
+        createdAt: "2026-10-02",
+        sentences: [
+          "桌子上有一个苹果。", "这个苹果是红色的。", "苹果红红的。", "我拿苹果。",
+          "我洗苹果。", "水是凉凉的。", "我用凉凉的水洗苹果。", "苹果很干净。",
+          "我坐下。", "我看红红的苹果。", "我咬一口苹果。", "苹果甜甜的。",
+          "苹果脆脆的。", "我吃甜甜的苹果。", "苹果真好吃。"
+        ],
+        probes: {
+          anchor: { text: "我用凉凉的水洗苹果。", pattern: "Subject + Instrument/Modifier + Object + Action" },
+          frontier: { text: "我吃甜甜的苹果。", pattern: "Introduction of 'eat' verb and sensory taste reduplication" }
+        }
+      },
+      {
+        title: "喝凉凉的水",
+        createdAt: "2026-10-02",
+        sentences: [
+          "这里有一杯水。", "这杯水很凉。", "水是凉凉的。", "我拿这杯水。",
+          "我看这杯凉凉的水。", "我喝一口水。", "凉凉的水很好喝。", "我喜欢喝凉凉的水。",
+          "这个杯子很大。", "杯子里有凉凉的水。", "我再喝一口水。", "水很凉，很舒服。",
+          "我慢慢地喝水。", "凉凉的水喝完了。"
+        ],
+        probes: {
+          anchor: { text: "我喝水。", pattern: "Subject + Verb + Object" },
+          frontier: { text: "我喝凉凉的水。", pattern: "Subject + Verb + Adjective(AA) + 的 + Object" }
+        }
+      },
+      {
+        title: "洗红红的苹果",
+        createdAt: "2026-10-02",
+        sentences: [
+          "桌子上有一个苹果。", "这个苹果是红色的。", "苹果很大，也很红。", "我拿一个苹果。",
+          "我拿着苹果去洗手池。", "我打开水。", "水在流。", "哗啦啦，水在流。",
+          "我洗苹果。", "我用手洗红红的苹果。", "苹果洗干净了。", "我关上水。",
+          "我闻一闻苹果。", "苹果好香啊。", "我吃了一口苹果。", "苹果又甜又脆。"
+        ],
+        probes: {
+          anchor: { text: "这个苹果是红色的。", pattern: "A is B (adjective)" },
+          frontier: { text: "我用手洗红红的苹果。", pattern: "Instrumental usage (Use X to do Y)" }
+        }
+      },
+      {
+        title: "吃甜甜的草莓",
+        createdAt: "2026-10-02",
+        sentences: [
+          "这里有草莓。", "草莓是红色的。", "草莓是红红的。", "我洗草莓。",
+          "我洗红红的草莓。", "草莓洗好了。", "我拿一个草莓。", "我吃一个草莓。",
+          "草莓很甜。", "草莓甜甜的。", "我再吃一个草莓。", "红红的草莓很好吃。",
+          "甜甜的草莓很好吃。", "我喜欢吃草莓。"
+        ],
+        probes: {
+          anchor: { text: "我洗红红的草莓。", pattern: "Subject + Verb + Reduplicated Color Adjective + Object" },
+          frontier: { text: "甜甜的草莓很好吃。", pattern: "Reduplicated Sensory Adjective + Evaluation" }
+        }
+      },
+      {
+        title: "洗红红的草莓",
+        createdAt: "2026-10-02",
+        sentences: [
+          "这里有一个草莓。", "草莓是红红的。", "这里有很多草莓。", "我拿一个草莓。",
+          "我洗草莓。", "水凉凉的。", "我洗红红的草莓。", "洗洗洗，洗草莓。",
+          "草莓干干净净。", "我看红红的草莓。", "我吃红红的草莓。", "草莓甜甜的。",
+          "很好吃。", "我喜欢红红的草莓。"
+        ],
+        probes: {
+          anchor: { text: "草莓红红的。", pattern: "Noun + Color/Adj-Adj + 的" },
+          frontier: { text: "我洗红红的草莓。", pattern: "Action Verb (洗) + Reduplicated Adjective + Noun" }
+        }
+      },
+      {
+        title: "吃大西瓜",
+        createdAt: "2026-10-02",
+        sentences: [
+          "这是一个大西瓜。", "西瓜是绿色的。", "我看见大西瓜。", "我拿这一个西瓜。",
+          "我洗西瓜。", "水是凉的。", "我洗绿色的西瓜。", "西瓜现在很干净。",
+          "我拿一把刀。", "我切大西瓜。", "西瓜里面是红色的。", "我吃一口西瓜。",
+          "西瓜真甜。", "我吃红色的西瓜。", "我喜欢吃西瓜。"
+        ],
+        probes: {
+          anchor: { text: "我吃红色的西瓜。", pattern: "Subject + Verb + Adjective + Noun" },
+          frontier: { text: "西瓜里面是红色的。", pattern: "Noun + Position (里面) + Copula (是) + Adjective" }
+        }
+      },
+      {
+        title: "切红苹果",
+        createdAt: "2026-10-02",
+        sentences: [
+          "这里有一个红苹果。", "苹果很大。", "我洗苹果。", "我洗一洗。",
+          "苹果现在很干净。", "我拿一把小刀。", "我切苹果。", "我切，我切，我再切。",
+          "大苹果现在是小块。", "我拿一小块苹果。", "我吃一小块。", "苹果很甜。",
+          "我喜欢吃红苹果。", "苹果没有了。"
+        ],
+        probes: {
+          anchor: { text: "我洗苹果。", pattern: "Subject + Verb (Action) + Object" },
+          frontier: { text: "我切苹果。", pattern: "Novel concrete action verb replacement" }
+        }
+      }
+    ];
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.totalListeningSeconds) totalListeningSeconds = parsed.totalListeningSeconds;
+        if (parsed.completedStoriesCount) completedStoriesCount = parsed.completedStoriesCount;
+        if (parsed.currentStreakDays) currentStreakDays = parsed.currentStreakDays;
+        if (parsed.dailyLogs) dailyLogs = parsed.dailyLogs;
+        if (Array.isArray(parsed.customStories)) customStories = parsed.customStories;
+      }
+    } catch(e) {
+      console.warn("Storage hydration skipped");
+    }
+
+    let allStories = [...STARTER_STORIES, ...customStories];
+
+    let currentAudio = null;
+    let audioCache = {};
+    let isPlaying = false;
+    let audioPlaybackRate = 1.0;
+    let storyDuration = 0;
+    let sentenceCues = [];
+    let sessionTimerInterval = null;
+    let fallbackUtterance = null;
+
+    function getTodayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function saveStateLocally() {
+      const payload = {
+        totalListeningSeconds,
+        completedStoriesCount,
+        currentStreakDays,
+        dailyLogs,
+        customStories
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      const st = document.getElementById('sync-status-display');
+      if (st) st.textContent = '● Saved';
+    }
+
+    window.openApiKeyModal = () => {
+      const input = document.getElementById('input-api-key');
+      if (input) input.value = userApiKey;
+      document.getElementById('apikey-modal')?.classList.add('active');
+    };
+    window.closeApiKeyModal = () => document.getElementById('apikey-modal')?.classList.remove('active');
+    window.saveApiKey = () => {
+      const input = document.getElementById('input-api-key');
+      userApiKey = input ? input.value.trim() : '';
+      localStorage.setItem("gemini_user_api_key", userApiKey);
+      closeApiKeyModal();
+      showToast("🔑 API Key saved to browser!");
+    };
+
+    function checkApiKey() {
+      if (!userApiKey) {
+        openApiKeyModal();
+        showToast("Please enter your Gemini API Key");
+        return false;
+      }
+      return true;
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binaryString = window.atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    function pcmToWav(pcmData, sampleRate) {
+      const numChannels = 1;
+      const bytesPerSample = 2;
+      const blockAlign = numChannels * bytesPerSample;
+      const byteRate = sampleRate * blockAlign;
+      const dataSize = pcmData.byteLength;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      function writeString(offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, byteRate, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      new Uint8Array(buffer, 44).set(new Uint8Array(pcmData.buffer));
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    // Native browser speech synthesis fallback
+    function playNativeFallback(text, onComplete) {
+      if (!('speechSynthesis' in window)) {
+        showToast("Native browser audio synthesis not supported.");
+        return;
+      }
+      window.speechSynthesis.cancel();
+      fallbackUtterance = new SpeechSynthesisUtterance(text);
+      fallbackUtterance.lang = 'zh-CN';
+      fallbackUtterance.rate = audioPlaybackRate;
+      
+      fallbackUtterance.onstart = () => {
+        isPlaying = true;
+        updatePlayButton();
+        startSessionListeningTimer();
+      };
+      fallbackUtterance.onend = () => {
+        isPlaying = false;
+        updatePlayButton();
+        stopSessionListeningTimer();
+        if (onComplete) onComplete();
+      };
+      fallbackUtterance.onerror = () => {
+        isPlaying = false;
+        updatePlayButton();
+        stopSessionListeningTimer();
+      };
+
+      window.speechSynthesis.speak(fallbackUtterance);
+    }
+
+    async function synthesizeGeminiSpeech(text, voiceName) {
+      if (!checkApiKey()) throw new Error("API Key missing");
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+
+      const payload = {
+        contents: [{ parts: [{ text: text }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: voiceName || "Aoede" }
+            }
+          }
+        }
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.warn("Gemini TTS API error, activating fallback:", errText);
+        throw new Error("HTTP " + response.status);
+      }
+
+      const result = await response.json();
+      const part = result?.candidates?.[0]?.content?.parts?.[0];
+      const audioData = part?.inlineData?.data;
+      const mimeType = part?.inlineData?.mimeType;
+
+      if (!audioData || !mimeType) throw new Error("No audio returned from Gemini");
+
+      const rateMatch = mimeType.match(/rate=(\d+)/);
+      const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+      const pcmBuffer = base64ToArrayBuffer(audioData);
+      const pcm16 = new Int16Array(pcmBuffer);
+      const wavBlob = pcmToWav(pcm16, sampleRate);
+      return URL.createObjectURL(wavBlob);
+    }
+
+    window.togglePlay = async function() {
+      if (isPlaying) {
+        if (currentAudio) currentAudio.pause();
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        isPlaying = false;
+        updatePlayButton();
+        stopSessionListeningTimer();
+        return;
+      }
+
+      const story = allStories[currentStoryIndex];
+      if (!story) return;
+
+      const cacheKey = `story_${currentStoryIndex}_${selectedVoice}`;
+      let audioUrl = audioCache[cacheKey];
+
+      const playBtn = document.getElementById('btn-main-play');
+      if (!audioUrl) {
+        if (!checkApiKey()) return;
+        if (playBtn) playBtn.innerHTML = '⏳';
+        try {
+          const fullText = story.sentences.join(' ');
+          audioUrl = await synthesizeGeminiSpeech(fullText, selectedVoice);
+          audioCache[cacheKey] = audioUrl;
+        } catch (err) {
+          showToast("Using device native Chinese voice (Fallback)");
+          playNativeFallback(story.sentences.join(' '), onAudioPlaybackEnded);
+          return;
+        }
+      }
+
+      if (!currentAudio || currentAudio.src !== audioUrl) {
+        currentAudio = new Audio(audioUrl);
+        currentAudio.playbackRate = audioPlaybackRate;
+
+        currentAudio.addEventListener('loadedmetadata', () => {
+          storyDuration = currentAudio.duration;
+          buildSentenceCues(story.sentences, storyDuration);
+          const durEl = document.getElementById('player-time-duration');
+          if (durEl) durEl.textContent = formatAudioTime(storyDuration);
+        });
+
+        currentAudio.addEventListener('timeupdate', () => {
+          if (!currentAudio) return;
+          const cur = currentAudio.currentTime;
+          const curEl = document.getElementById('player-time-current');
+          if (curEl) curEl.textContent = formatAudioTime(cur);
+
+          const scrubber = document.getElementById('player-scrubber');
+          if (scrubber && storyDuration > 0) {
+            scrubber.value = Math.floor((cur / storyDuration) * 100);
+          }
+          highlightActiveKaraokeSentence(cur);
+        });
+
+        currentAudio.addEventListener('ended', onAudioPlaybackEnded);
+      }
+
+      currentAudio.play().then(() => {
+        isPlaying = true;
+        updatePlayButton();
+        startSessionListeningTimer();
+      }).catch(e => {
+        console.warn("Audio element play error, using fallback:", e);
+        playNativeFallback(story.sentences.join(' '), onAudioPlaybackEnded);
+      });
+    };
+
+    function onAudioPlaybackEnded() {
+      isPlaying = false;
+      updatePlayButton();
+      stopSessionListeningTimer();
+
+      const approxSecs = Math.max(15, Math.floor(storyDuration || 25));
+      totalListeningSeconds += approxSecs;
+
+      const tKey = getTodayKey();
+      if (!dailyLogs[tKey]) dailyLogs[tKey] = { stories: 0, seconds: 0 };
+      dailyLogs[tKey].seconds += approxSecs;
+
+      updateStatDisplays();
+      renderDreamingSpanishDashboard();
+      saveStateLocally();
+
+      if (auto3PassEnabled) {
+        if (currentPass === 1) {
+          showToast("Pass 1 complete! Advancing to Pass 2...");
+          setTimeout(() => {
+            selectPass(2);
+            togglePlay();
+          }, 1200);
+        } else if (currentPass === 2) {
+          showToast("Pass 2 complete! Advancing to Pass 3...");
+          setTimeout(() => {
+            selectPass(3);
+            togglePlay();
+          }, 1200);
+        } else if (currentPass === 3) {
+          completedStoriesCount++;
+          dailyLogs[tKey].stories++;
+          updateStatDisplays();
+          renderDreamingSpanishDashboard();
+          saveStateLocally();
+          showToast("🎉 Story Mastered! Sound Check Unlocked.");
+          const compCard = document.getElementById('comp-card');
+          if (compCard) compCard.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
+
+    function buildSentenceCues(sentences, totalSecs) {
+      sentenceCues = [];
+      const totalChars = sentences.reduce((sum, s) => sum + s.length, 0);
+      let curTime = 0;
+      sentences.forEach((s, idx) => {
+        const dur = (s.length / totalChars) * totalSecs;
+        sentenceCues.push({ start: curTime, end: curTime + dur, index: idx });
+        curTime += dur;
+      });
+    }
+
+    function highlightActiveKaraokeSentence(time) {
+      if (currentPass !== 2) return;
+      const found = sentenceCues.find(c => time >= c.start && time <= c.end);
+      document.querySelectorAll('.sentence-item').forEach((el, idx) => {
+        if (found && idx === found.index) {
+          el.classList.add('active-karaoke');
+        } else {
+          el.classList.remove('active-karaoke');
+        }
+      });
+    }
+
+    function startSessionListeningTimer() {
+      if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+      sessionTimerInterval = setInterval(() => {
+        totalListeningSeconds++;
+        const tKey = getTodayKey();
+        if (!dailyLogs[tKey]) dailyLogs[tKey] = { stories: 0, seconds: 0 };
+        dailyLogs[tKey].seconds++;
+        updateStatDisplays();
+        saveStateLocally();
+      }, 1000);
+    }
+
+    function stopSessionListeningTimer() {
+      if (sessionTimerInterval) {
+        clearInterval(sessionTimerInterval);
+        sessionTimerInterval = null;
+      }
+    }
+
+    function updatePlayButton() {
+      const btn = document.getElementById('btn-main-play');
+      if (btn) btn.innerHTML = isPlaying ? '⏸' : '▶';
+    }
+
+    window.setPlaySpeed = function(rate) {
+      audioPlaybackRate = rate;
+      if (currentAudio) currentAudio.playbackRate = rate;
+      if (fallbackUtterance) fallbackUtterance.rate = rate;
+      showToast(`Speed: ${rate}x`);
+    };
+
+    window.onScrubInput = function(val) {
+      if (currentAudio && storyDuration > 0) {
+        currentAudio.currentTime = (val / 100) * storyDuration;
+      }
+    };
+
+    window.selectPass = function(passNum) {
+      currentPass = passNum;
+      const p1 = document.getElementById('tab-pass-1');
+      const p2 = document.getElementById('tab-pass-2');
+      const p3 = document.getElementById('tab-pass-3');
+      const curtain = document.getElementById('blind-curtain-overlay');
+      const blindTitle = document.getElementById('blind-title');
+      const blindDesc = document.getElementById('blind-desc');
+
+      [p1, p2, p3].forEach((btn, i) => {
+        if (btn) {
+          if (i + 1 === passNum) {
+            btn.className = "bg-cyan-600 text-white font-semibold py-2 px-1 sm:px-3 rounded-xl border border-cyan-500 text-center transition flex flex-col items-center justify-center min-w-0";
+          } else {
+            btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-1 sm:px-3 rounded-xl border border-slate-700 text-center transition flex flex-col items-center justify-center min-w-0";
+          }
+        }
+      });
+
+      if (passNum === 1) {
+        if (curtain) curtain.style.display = 'flex';
+        if (blindTitle) blindTitle.textContent = "Pure Auditory Tuning (Pass 1)";
+        if (blindDesc) blindDesc.textContent = "Characters masked. Focus on sound rhythm and decoding without reading.";
+      } else if (passNum === 2) {
+        if (curtain) curtain.style.display = 'none';
+      } else if (passNum === 3) {
+        if (curtain) curtain.style.display = 'flex';
+        if (blindTitle) blindTitle.textContent = "Final Ear Anchor (Pass 3)";
+        if (blindDesc) blindDesc.textContent = "Characters re-masked. Sound-to-meaning acquisition with zero English.";
+      }
+    };
+
+    window.toggleAuto3Pass = function() {
+      auto3PassEnabled = !auto3PassEnabled;
+      const btn = document.getElementById('btn-auto-3pass-toggle');
+      if (btn) {
+        btn.innerHTML = auto3PassEnabled ? '<span>🔄</span> <span>Auto 3-Pass: ON</span>' : '<span>⏹</span> <span>Auto 3-Pass: OFF</span>';
+        btn.className = auto3PassEnabled
+          ? "bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-3 py-2 rounded-xl border border-slate-700 font-semibold flex items-center gap-1.5"
+          : "bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs px-3 py-2 rounded-xl border border-slate-700 font-medium flex items-center gap-1.5";
+      }
+      showToast(auto3PassEnabled ? "Auto 3-Pass Mode ON" : "Auto 3-Pass Mode OFF");
+    };
+
+    window.playProbe = async function(type) {
+      const story = allStories[currentStoryIndex];
+      if (!story || !story.probes || !story.probes[type]) return;
+
+      const probe = story.probes[type];
+      const btn = document.getElementById(type === 'anchor' ? 'btn-probe-play-anchor' : 'btn-probe-play-frontier');
+      if (btn) btn.innerHTML = '<span>⏳</span> <span>Loading...</span>';
+
+      const cacheKey = `probe_${currentStoryIndex}_${type}_${selectedVoice}`;
+      let audioUrl = audioCache[cacheKey];
+
+      try {
+        if (!audioUrl) {
+          audioUrl = await synthesizeGeminiSpeech(probe.text, selectedVoice);
+          audioCache[cacheKey] = audioUrl;
+        }
+        const probeAudio = new Audio(audioUrl);
+        probeAudio.playbackRate = audioPlaybackRate;
+        await probeAudio.play();
+      } catch (e) {
+        playNativeFallback(probe.text);
+      } finally {
+        if (btn) btn.innerHTML = '<span>▶</span> <span>Play Sound</span>';
+      }
+    };
+
+    window.recordProbe = function(type, result, btnElem) {
+      const parent = btnElem.parentElement;
+      parent.querySelectorAll('button').forEach(b => {
+        b.className = `probe-btn-${type} py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-center font-medium`;
+      });
+
+      if (result === 'direct') {
+        btnElem.className = `probe-btn-${type} py-2 px-1 rounded-lg bg-emerald-700 text-white font-bold border border-emerald-500 shadow`;
+      } else if (result === 'fuzzy') {
+        btnElem.className = `probe-btn-${type} py-2 px-1 rounded-lg bg-amber-700 text-white font-bold border border-amber-500 shadow`;
+      } else {
+        btnElem.className = `probe-btn-${type} py-2 px-1 rounded-lg bg-rose-700 text-white font-bold border border-rose-500 shadow`;
+      }
+      showToast(`Recorded: ${result.toUpperCase()}`);
+    };
+
+    window.copyProbeTelemetry = function() {
+      const story = allStories[currentStoryIndex];
+      const text = `Mandarin CI Ear Telemetry:\nStory: ${story.title}\nStage: 1 (Krashen Ear-Calibration)\nTotal Time: ${formatListeningTime(totalListeningSeconds)}\nCompleted: ${completedStoriesCount} stories`;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("Telemetry copied to clipboard!");
+      });
+    };
+
+    window.generateAutonomousStory = async function() {
+      if (!checkApiKey()) return;
+      const btn = document.getElementById('btn-generate-ai-story');
+      if (btn) btn.innerHTML = '<span>⏳</span> <span>Writing CI Story...</span>';
+
+      const prompt = `Write a Krashen Level 1 Comprehensible Input (CI) Mandarin story for pure auditory ear tuning.
+STRICT SLA RULES:
+1. Zero English words anywhere. The title and all sentences must be pure Mandarin Chinese.
+2. Short, rhythmic sentences (12-16 sentences).
+3. Repetitive concrete verbs (洗, 吃, 喝, 看, 切, 拿, 摸).
+4. Everyday concrete objects (苹果, 西瓜, 草莓, 梨, 水, 杯子, 盘子).
+5. Output strict JSON with:
+{
+  "title": "Pure Mandarin Title (e.g. 洗大西瓜)",
+  "sentences": ["sentence 1", "sentence 2", ...],
+  "probes": {
+    "anchor": { "text": "familiar sentence pattern", "pattern": "syntactic pattern notes" },
+    "frontier": { "text": "subtle i+1 frontier sentence", "pattern": "novel grammatical element notes" }
+  }
+}`;
+
+      try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+
+        const json = await resp.json();
+        const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const parsed = JSON.parse(rawText);
+
+        const newStory = {
+          title: parsed.title || "新故事",
+          createdAt: getTodayKey(),
+          sentences: parsed.sentences || ["这是苹果。"],
+          probes: parsed.probes || {
+            anchor: { text: parsed.sentences[0], pattern: "Subject + Verb + Object" },
+            frontier: { text: parsed.sentences[parsed.sentences.length - 1], pattern: "Novel frontier pattern" }
+          }
+        };
+
+        customStories.unshift(newStory);
+        allStories = [...STARTER_STORIES, ...customStories];
+        currentStoryIndex = 3;
+        renderStoryOptions();
+        loadStory(currentStoryIndex);
+        saveStateLocally();
+        showToast(`✨ Generated: ${newStory.title}`);
+      } catch (e) {
+        showToast("Story generation error: " + e.message);
+      } finally {
+        if (btn) btn.innerHTML = '<span>✨</span> <span>New AI Story</span>';
+      }
+    };
+
+    window.calibrateAndGenerateNextStory = function() {
+      generateAutonomousStory();
+    };
+
+    window.runAcousticSlaAudit = async function() {
+      if (!checkApiKey()) return;
+      const modal = document.getElementById('sla-audit-modal');
+      const content = document.getElementById('sla-audit-content');
+      if (modal) modal.classList.add('active');
+      if (content) content.innerHTML = '<div class="text-center py-6 text-slate-400"><div class="text-2xl mb-2">⏳</div><p>Gemini is evaluating tonal sandhi, phoneme contrasts, and i+1 auditory load...</p></div>';
+
+      const story = allStories[currentStoryIndex];
+      const prompt = `Conduct a rigorous Second Language Acquisition (SLA) Acoustic Linguistic Audit for this Mandarin CI story:
+Title: ${story.title}
+Text: ${story.sentences.join(' ')}
+
+Provide an audit in concise markdown format focusing on:
+1. **Tonal Sandhi Trajectory**: Any third-tone sandhi (3+3 -> 2+3), neutral tone cadences, or tone drop hazards.
+2. **Auditory Processing Load (i+1)**: Syntactic repetition ratio and acoustic transparency.
+3. **Phoneme Contrasts**: Minimal pairs or consonant-vowel transitions present.
+4. **Acquisition Recommendation**: Pure auditory cues to listen for without mental translation.`;
+
+      try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const json = await resp.json();
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "Audit complete.";
+        if (content) content.innerHTML = formatMarkdown(text);
+      } catch (e) {
+        if (content) content.textContent = "Audit fetch failed: " + e.message;
+      }
+    };
+
+    window.closeSlaAuditModal = () => document.getElementById('sla-audit-modal')?.classList.remove('active');
+
+    function renderDreamingSpanishDashboard() {
+      const watchedEl = document.getElementById('ds-watched-min');
+      const dailyGoalEl = document.getElementById('ds-daily-goal');
+      const goalBarEl = document.getElementById('ds-goal-bar-fill');
+      const levelTitleEl = document.getElementById('ds-current-level-title');
+      const totalInputHoursEl = document.getElementById('ds-total-input-hours');
+      const levelProgressBarEl = document.getElementById('ds-level-progress-bar');
+      const levelStartTargetEl = document.getElementById('ds-level-start-target');
+      const levelEndTargetEl = document.getElementById('ds-level-end-target');
+      const nextLevelLabelEl = document.getElementById('ds-next-level-label');
+      const hoursRemainingEl = document.getElementById('ds-hours-remaining');
+
+      const tKey = getTodayKey();
+      const todaySecs = dailyLogs[tKey]?.seconds || 0;
+      const todayMins = Math.floor(todaySecs / 60);
+
+      if (watchedEl) watchedEl.textContent = `${todayMins} min`;
+      if (dailyGoalEl) dailyGoalEl.textContent = `${dailyGoalMinutes} min`;
+
+      const pct = Math.min(100, Math.floor((todayMins / dailyGoalMinutes) * 100));
+      if (goalBarEl) goalBarEl.style.width = `${pct}%`;
+
+      const totalHours = totalListeningSeconds / 3600;
+      if (totalInputHoursEl) totalInputHoursEl.textContent = `${totalHours.toFixed(2)} hrs`;
+
+      const tiers = [
+        { level: 1, name: "Level 1", start: 0, end: 25 },
+        { level: 2, name: "Level 2", start: 25, end: 75 },
+        { level: 3, name: "Level 3", start: 75, end: 150 },
+        { level: 4, name: "Level 4", start: 150, end: 300 },
+        { level: 5, name: "Level 5", start: 300, end: 600 },
+        { level: 6, name: "Level 6", start: 600, end: 1000 },
+        { level: 7, name: "Level 7", start: 1000, end: 1500 }
+      ];
+
+      let currentTier = tiers[0];
+      for (let t of tiers) {
+        if (totalHours >= t.start) currentTier = t;
+      }
+
+      if (levelTitleEl) levelTitleEl.textContent = currentTier.name;
+      if (levelStartTargetEl) levelStartTargetEl.textContent = `${currentTier.start} hrs`;
+      if (levelEndTargetEl) levelEndTargetEl.textContent = `${currentTier.end} hrs`;
+      if (nextLevelLabelEl) nextLevelLabelEl.textContent = `Level ${Math.min(7, currentTier.level + 1)}`;
+
+      const levelProgPct = Math.min(100, Math.max(0, ((totalHours - currentTier.start) / (currentTier.end - currentTier.start)) * 100));
+      if (levelProgressBarEl) levelProgressBarEl.style.width = `${levelProgPct.toFixed(1)}%`;
+
+      const remaining = Math.max(0, currentTier.end - totalHours);
+      if (hoursRemainingEl) hoursRemainingEl.textContent = `${remaining.toFixed(2)} hrs`;
+
+      for (let i = 1; i <= 7; i++) {
+        const pill = document.getElementById(`ds-pill-${i}`);
+        if (pill) {
+          if (i === currentTier.level) {
+            pill.className = `ds-step-pill w-full active h-${10 + (i - 1) * 4}`;
+            pill.style.opacity = '1';
+          } else if (i < currentTier.level) {
+            pill.className = `ds-step-pill w-full h-${10 + (i - 1) * 4}`;
+            pill.style.opacity = '0.85';
+          } else {
+            pill.className = `ds-step-pill w-full h-${10 + (i - 1) * 4}`;
+            pill.style.opacity = '0.25';
+          }
+        }
+      }
+    }
+
+    window.promptDailyGoal = function() {
+      const val = prompt("Enter daily goal in minutes:", dailyGoalMinutes);
+      if (val && !isNaN(parseInt(val))) {
+        dailyGoalMinutes = parseInt(val, 10);
+        renderDreamingSpanishDashboard();
+        showToast(`Daily goal set: ${dailyGoalMinutes}m`);
+      }
+    };
+
+    function renderCalendarHeatmap() {
+      const grid = document.getElementById('calendar-heatmap-grid');
+      const table = document.getElementById('daily-log-table');
+      if (!grid) return;
+
+      grid.innerHTML = '';
+      const dates = Object.keys(dailyLogs).sort();
+
+      dates.forEach(d => {
+        const log = dailyLogs[d];
+        const mins = Math.floor(log.seconds / 60);
+        const col = mins >= 40 ? 'bg-indigo-600' : mins >= 20 ? 'bg-cyan-600' : 'bg-slate-800';
+
+        const cell = document.createElement('div');
+        cell.className = `${col} rounded-lg p-2 text-center border border-slate-700/60 shadow`;
+        cell.innerHTML = `
+          <div class="text-[9px] text-slate-300 font-mono">${d.slice(5)}</div>
+          <div class="text-xs font-bold text-white">${mins}m</div>
+          <div class="text-[9px] text-cyan-300">${log.stories} st</div>
+        `;
+        grid.appendChild(cell);
+      });
+
+      if (table) {
+        table.innerHTML = dates.slice().reverse().map(d => {
+          const log = dailyLogs[d];
+          const mins = Math.floor(log.seconds / 60);
+          return `
+            <div class="flex justify-between items-center text-xs py-1.5 px-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <span class="font-mono text-slate-300">${d}</span>
+              <span class="text-emerald-400 font-semibold">${log.stories} stories</span>
+              <span class="font-bold text-amber-300">${mins} min</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    window.sendCoachMessage = async function() {
+      if (!checkApiKey()) return;
+      const input = document.getElementById('coach-user-input');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+      input.value = '';
+
+      appendCoachMessage('user', text);
+      const box = document.getElementById('coach-messages-box');
+      const loadingId = 'coach-loading-' + Date.now();
+      const loadingDiv = document.createElement('div');
+      loadingDiv.id = loadingId;
+      loadingDiv.className = 'text-left text-slate-400 italic text-xs';
+      loadingDiv.textContent = '🤖 Coach is typing...';
+      if (box) box.appendChild(loadingDiv);
+
+      const systemInstruction = `You are the Gemini SLA Ear Coach for an adult acquirer in Krashen Level 1 Mandarin listening.
+Acquirer Telemetry:
+- Total Listening Time: ${formatListeningTime(totalListeningSeconds)}
+- Completed Stories: ${completedStoriesCount}
+- Active Streak: ${currentStreakDays} days
+- Principles: Dreaming Spanish, Automatic Language Growth (ALG), Krashen's Comprehensible Input (i+1). No conscious grammar translation. No English in audio sessions.
+Provide encouraging, pedagogically grounded guidance.`;
+
+      try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: `${systemInstruction}\nUser Question: ${text}` }] }]
+          })
+        });
+
+        const json = await resp.json();
+        const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text || "Keep listening and trusting your ear!";
+        document.getElementById(loadingId)?.remove();
+        appendCoachMessage('model', reply);
+      } catch (e) {
+        document.getElementById(loadingId)?.remove();
+        appendCoachMessage('model', "Coach error: " + e.message);
+      }
+    };
+
+    window.askCoachPrompt = function(promptText) {
+      const input = document.getElementById('coach-user-input');
+      if (input) input.value = promptText;
+      window.sendCoachMessage();
+    };
+
+    function appendCoachMessage(role, text) {
+      const box = document.getElementById('coach-messages-box');
+      if (!box) return;
+      const d = document.createElement('div');
+      if (role === 'user') {
+        d.className = 'p-3 bg-cyan-950/70 border border-cyan-800 rounded-2xl text-cyan-100 max-w-[85%] ml-auto text-xs sm:text-sm';
+        d.textContent = text;
+      } else {
+        d.className = 'p-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-slate-200 max-w-[90%] mr-auto text-xs sm:text-sm leading-relaxed';
+        d.innerHTML = formatMarkdown(text);
+      }
+      box.appendChild(d);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    window.resetCoachChat = function() {
+      const box = document.getElementById('coach-messages-box');
+      if (box) box.innerHTML = '';
+      appendCoachMessage('model', "Hello! I am your Gemini SLA Ear Coach. You have logged **3h 07m** of pure Mandarin ear calibration across **106 stories**. How can I help your input strategy today?");
+    };
+
+    window.switchMainTab = function(tabName) {
+      const tabs = ['player', 'roadmap', 'calendar', 'coach'];
+      tabs.forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`nav-tab-${t}`);
+        if (view) view.classList.toggle('hidden', t !== tabName);
+        if (btn) {
+          if (t === tabName) {
+            btn.className = "flex-1 py-2 px-1 sm:px-2 text-center rounded-lg bg-cyan-600 text-white font-semibold transition flex items-center justify-center gap-1 shadow";
+          } else {
+            btn.className = "flex-1 py-2 px-1 sm:px-2 text-center rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1";
+          }
+        }
+      });
+
+      if (tabName === 'roadmap') renderDreamingSpanishDashboard();
+      if (tabName === 'calendar') {
+        renderCalendarHeatmap();
+        renderStoryLibrary();
+      }
+    };
+
+    window.onStorySelected = (idx) => loadStory(parseInt(idx, 10));
+    window.onVoiceSelected = (voice) => {
+      selectedVoice = voice;
+      showToast(`Voice: ${voice}`);
+    };
+
+    function loadStory(idx) {
+      currentStoryIndex = idx;
+      const story = allStories[idx];
+      if (!story) return;
+
+      if (currentAudio) {
+        currentAudio.pause();
+        isPlaying = false;
+        updatePlayButton();
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      const container = document.getElementById('karaoke-container');
+      if (container) {
+        container.innerHTML = story.sentences.map((s, i) => `
+          <div class="sentence-item" onclick="seekToSentence(${i})">${s}</div>
+        `).join('');
+      }
+
+      const pAnchor = document.getElementById('probe-anchor-pattern');
+      const pFrontier = document.getElementById('probe-frontier-pattern');
+      if (pAnchor) pAnchor.textContent = story.probes?.anchor?.pattern || "Baseline sentence pattern anchor";
+      if (pFrontier) pFrontier.textContent = story.probes?.frontier?.pattern || "Novel frontier pattern";
+
+      selectPass(1);
+    }
+
+    window.seekToSentence = function(i) {
+      if (currentAudio && sentenceCues[i]) {
+        currentAudio.currentTime = sentenceCues[i].start;
+        if (!isPlaying) togglePlay();
+      }
+    };
+
+    function renderStoryOptions() {
+      const dropdown = document.getElementById('story-dropdown');
+      if (!dropdown) return;
+      dropdown.innerHTML = allStories.map((s, i) => `
+        <option value="${i}">${i + 1}. ${s.title}</option>
+      `).join('');
+      dropdown.value = currentStoryIndex;
+    }
+
+    function renderStoryLibrary() {
+      const countEl = document.getElementById('library-story-count');
+      const listEl = document.getElementById('library-stories-list');
+      if (countEl) countEl.textContent = allStories.length;
+      if (!listEl) return;
+
+      listEl.innerHTML = allStories.map((s, i) => `
+        <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl flex justify-between items-center text-xs">
+          <div>
+            <div class="font-bold text-slate-100">${i + 1}. ${s.title}</div>
+            <div class="text-[10px] text-slate-400">${s.createdAt} • ${s.sentences.length} sentences</div>
+          </div>
+          <button onclick="switchMainTab('player'); onStorySelected(${i}); togglePlay();" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-2.5 py-1 rounded-lg">
+            ▶ Play
+          </button>
+        </div>
+      `).join('');
+    }
+
+    window.filterStoryLibrary = function(q) {
+      const term = q.toLowerCase();
+      document.querySelectorAll('#library-stories-list > div').forEach(el => {
+        el.style.display = el.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+      });
+    };
+
+    window.openLinkDeviceModal = () => document.getElementById('link-device-modal')?.classList.add('active');
+    window.closeLinkDeviceModal = () => document.getElementById('link-device-modal')?.classList.remove('active');
+    window.applyLinkedSyncKey = function() {
+      const input = document.getElementById('input-link-sync-key');
+      const key = input ? input.value.trim() : '';
+      if (key) {
+        activeSyncKey = key;
+        localStorage.setItem("mandarin_sync_key", key);
+        document.getElementById('sync-profile-key').textContent = key;
+        closeLinkDeviceModal();
+        showToast("Connected to profile: " + key);
+      }
+    };
+
+    window.manualForceCloudSync = function() {
+      saveStateLocally();
+      showToast("Progress saved to browser storage! Use Drive Backup to sync between devices.");
+    };
+
+    window.openDriveBackupModal = () => document.getElementById('drive-backup-modal')?.classList.add('active');
+    window.closeDriveBackupModal = () => document.getElementById('drive-backup-modal')?.classList.remove('active');
+
+    window.exportProfileToDriveFile = function() {
+      const payload = {
+        appName: "Mandarin CI Ear Tuner",
+        exportedAt: new Date().toISOString(),
+        syncKey: activeSyncKey,
+        totalListeningSeconds,
+        completedStoriesCount,
+        currentStreakDays,
+        dailyLogs,
+        customStories
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mandarin_ci_backup_${activeSyncKey}_${getTodayKey()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Backup JSON file downloaded!");
+    };
+
+    window.importProfileFromDriveFile = function(evt) {
+      const file = evt.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.totalListeningSeconds) totalListeningSeconds = Number(data.totalListeningSeconds);
+          if (data.completedStoriesCount) completedStoriesCount = Number(data.completedStoriesCount);
+          if (data.currentStreakDays) currentStreakDays = Number(data.currentStreakDays);
+          if (data.dailyLogs) dailyLogs = data.dailyLogs;
+          if (Array.isArray(data.customStories)) {
+            customStories = data.customStories;
+            allStories = [...STARTER_STORIES, ...customStories];
+          }
+          if (data.syncKey) {
+            activeSyncKey = data.syncKey;
+            document.getElementById('sync-profile-key').textContent = activeSyncKey;
+          }
+          updateStatDisplays();
+          renderDreamingSpanishDashboard();
+          renderStoryOptions();
+          saveStateLocally();
+          closeDriveBackupModal();
+          showToast("Profile restored successfully!");
+        } catch (err) {
+          showToast("Failed to parse backup JSON.");
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    window.openManualRestoreModal = () => document.getElementById('manual-restore-modal')?.classList.add('active');
+    window.closeManualRestoreModal = () => document.getElementById('manual-restore-modal')?.classList.remove('active');
+    window.applyManualRestoreStats = function() {
+      const mins = parseInt(document.getElementById('manual-input-minutes').value, 10) || 0;
+      const stories = parseInt(document.getElementById('manual-input-stories').value, 10) || 0;
+      const streak = parseInt(document.getElementById('manual-input-streak').value, 10) || 0;
+
+      totalListeningSeconds = mins * 60;
+      completedStoriesCount = stories;
+      currentStreakDays = streak;
+
+      updateStatDisplays();
+      renderDreamingSpanishDashboard();
+      saveStateLocally();
+      closeManualRestoreModal();
+      showToast("Stats updated!");
+    };
+
+    function updateStatDisplays() {
+      const timeEl = document.getElementById('stat-total-time');
+      const countEl = document.getElementById('stat-stories-count');
+      const streakEl = document.getElementById('stat-streak-days');
+
+      if (timeEl) timeEl.textContent = formatListeningTime(totalListeningSeconds);
+      if (countEl) countEl.textContent = completedStoriesCount;
+      if (streakEl) streakEl.textContent = `${currentStreakDays} Days 🔥`;
+    }
+
+    function formatListeningTime(sec) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      return `${h}h ${String(m).padStart(2, '0')}m`;
+    }
+
+    function formatAudioTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function formatMarkdown(str) {
+      return str
+        .replace(/^### (.*$)/gim, '<h4 class="font-bold text-cyan-300 mt-2 mb-1">$1</h4>')
+        .replace(/^## (.*$)/gim, '<h3 class="font-bold text-white text-sm mt-3 mb-1">$1</h3>')
+        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+        .replace(/^\* (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
+        .replace(/\n/gim, '<br>');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast-box');
+      if (!t) return;
+      t.textContent = msg;
+      t.style.opacity = '1';
+      t.style.transform = 'translate(-50%, -8px)';
+      setTimeout(() => {
+        t.style.opacity = '0';
+        t.style.transform = 'translate(-50%, 0)';
+      }, 2500);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderStoryOptions();
+      loadStory(0);
+      updateStatDisplays();
+      renderDreamingSpanishDashboard();
+      resetCoachChat();
+    });
+  </script>
+</body>
+</html>
