@@ -859,7 +859,6 @@
       return new Blob([buffer], { type: 'audio/wav' });
     }
 
-    // Native browser speech synthesis fallback
     function playNativeFallback(text, onComplete) {
       if (!('speechSynthesis' in window)) {
         showToast("Native browser audio synthesis not supported.");
@@ -893,12 +892,15 @@
     async function synthesizeGeminiSpeech(text, voiceName) {
       if (!checkApiKey()) throw new Error("API Key missing");
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${userApiKey}`;
 
       const payload = {
-        contents: [{ parts: [{ text: text }] }],
+        contents: [{
+          role: "user",
+          parts: [{ text: `Read the following Chinese text aloud clearly with natural pacing, without adding commentary: ${text}` }]
+        }],
         generationConfig: {
-          responseModalities: ["AUDIO"],
+          responseModalities: ["TEXT", "AUDIO"],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: voiceName || "Aoede" }
@@ -914,17 +916,18 @@
       });
 
       if (!response.ok) {
-        const errText = await response.text();
-        console.warn("Gemini TTS API error, activating fallback:", errText);
+        const errDetail = await response.text();
+        console.warn("Gemini API Error Detail:", errDetail);
         throw new Error("HTTP " + response.status);
       }
 
       const result = await response.json();
-      const part = result?.candidates?.[0]?.content?.parts?.[0];
-      const audioData = part?.inlineData?.data;
-      const mimeType = part?.inlineData?.mimeType;
+      const parts = result?.candidates?.[0]?.content?.parts || [];
+      const audioPart = parts.find(p => p.inlineData && p.inlineData.data);
+      if (!audioPart) throw new Error("No audio payload returned from Gemini.");
 
-      if (!audioData || !mimeType) throw new Error("No audio returned from Gemini");
+      const audioData = audioPart.inlineData.data;
+      const mimeType = audioPart.inlineData.mimeType || "audio/L16;rate=24000";
 
       const rateMatch = mimeType.match(/rate=(\d+)/);
       const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
@@ -1220,7 +1223,7 @@ STRICT SLA RULES:
 }`;
 
       try {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`, {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${userApiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1280,7 +1283,7 @@ Provide an audit in concise markdown format focusing on:
 4. **Acquisition Recommendation**: Pure auditory cues to listen for without mental translation.`;
 
       try {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`, {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${userApiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -1435,7 +1438,7 @@ Acquirer Telemetry:
 Provide encouraging, pedagogically grounded guidance.`;
 
       try {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`, {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${userApiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
